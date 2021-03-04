@@ -51,7 +51,8 @@ if(ENABLE_TYPE_DISCOVERY)
   set(DDS_HAS_TYPE_DISCOVERY "1")
 endif()
 if(ENABLE_SHM)
-  set(DDS_HAS_SHM "1")
+  #set(DDS_HAS_SHM "1")
+  set(DDS_HAS_SHM "0")
 endif()
 # ones that linger in the sources
 # - DDS_HAS_BANDWIDTH_LIMITING
