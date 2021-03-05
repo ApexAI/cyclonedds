@@ -22,9 +22,10 @@
 #include "dds/ddsi/ddsi_builtin_topic_if.h"
 #include "dds__handles.h"
 
-#ifdef DDS_HAS_SHM
-#endif
+//#ifdef DDS_HAS_SHM
 #include "iceoryx_binding_c/binding.h"
+#include "shm__listener.h"
+//#endif
 
 #if defined (__cplusplus)
 extern "C" {
@@ -223,6 +224,9 @@ typedef struct dds_cyclonedds_entity {
   ddsrt_avl_tree_t m_domains;
   uint32_t threadmon_count;
   struct ddsi_threadmon *threadmon;
+//#ifdef DDS_HAS_SHM
+  shm_listener_t m_shm_listener;
+//#endif
 } dds_cyclonedds_entity;
 
 typedef struct dds_domain {

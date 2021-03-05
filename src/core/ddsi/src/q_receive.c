@@ -3445,7 +3445,7 @@ uint32_t listen_thread (struct ddsi_tran_listener *listener)
   return 0;
 }
 
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
 void read_callback (const void *chunk, void *arg)
 {
   struct dds_reader *rd = (struct dds_reader *) arg;
@@ -3490,7 +3490,7 @@ release:
 exit:
   thread_state_asleep (lookup_thread_state ());
 }
-#endif
+//#endif
 
 static int recv_thread_waitset_add_conn (os_sockWaitset ws, ddsi_tran_conn_t conn)
 {

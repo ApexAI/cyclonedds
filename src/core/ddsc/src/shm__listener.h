@@ -1,0 +1,40 @@
+/*
+ * Copyright(c) 2021 Apex.AI Inc. All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v. 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0, or the Eclipse Distribution License
+ * v. 1.0 which is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ *
+ * SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
+ */
+//TODO: adapt filename, reorganize structure
+//Isolate the functionality of the iceoryx waitset and an active listener thread
+//which will later be replaced by a listener from iceoryx.
+#ifndef _SHM_LISTENER_H_
+#define _SHM_LISTENER_H_
+
+#include "iceoryx_binding_c/binding.h"
+
+#if defined (__cplusplus)
+extern "C" {
+#endif
+
+struct shm_listener {
+ iox_ws_storage_t m_ws_storage;
+ iox_ws_t m_ws;
+ //add all necessary entities to run the single listener thread for the waitset but beware of circular dependencies
+ //with dds__types  
+};
+
+typedef struct shm_listener shm_listener_t;
+
+void shm_listener_init(shm_listener_t* listener);
+
+
+
+#if defined (__cplusplus)
+}
+#endif
+#endif

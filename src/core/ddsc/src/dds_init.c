@@ -33,6 +33,10 @@
 #include "dds/ddsi/ddsi_domaingv.h"
 #include "dds/version.h"
 
+//#ifdef DDS_HAS_SHM
+#include "shm__listener.h"
+//#endif
+
 static void dds_close (struct dds_entity *e);
 static dds_return_t dds_fini (struct dds_entity *e);
 
@@ -127,6 +131,11 @@ dds_return_t dds_init (void)
   dds_entity_add_ref_locked (&dds_global.m_entity);
   dds_entity_init_complete (&dds_global.m_entity);
   ddsrt_atomic_st32 (&dds_state, CDDS_STATE_READY);
+
+  //#ifdef DDS_HAS_SHM
+  //shm_listener_init(&dds_global.m_shm_listener);
+  //#endif
+
   ddsrt_mutex_unlock (init_mutex);
   return DDS_RETCODE_OK;
 

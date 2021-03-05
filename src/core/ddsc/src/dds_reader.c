@@ -43,6 +43,7 @@
 #include "iceoryx_binding_c/binding.h"
 #endif
 
+
 DECL_ENTITY_LOCK_UNLOCK (extern inline, dds_reader)
 
 #define DDS_READER_STATUS_MASK                                   \
@@ -603,6 +604,7 @@ size_t name_size;
     assert (rc == DDS_RETCODE_OK);
     DDS_CLOG (DDS_LC_SHM, &rd->m_entity.m_domain->gv.logconfig, "Reader's topic name will be DDS:Cyclone:%s\n", topic_name);
     rd->m_sub = iox_sub_init (&rd->m_sub_storage, "DDS", "Cyclone", topic_name, NULL);
+    //todo : attach to waitset
     iox_sub_subscribe (rd->m_sub);
   }
 #endif
