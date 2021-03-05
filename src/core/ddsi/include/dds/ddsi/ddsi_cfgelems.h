@@ -1613,7 +1613,7 @@ static struct cfgelem ssl_cfgelems[] = {
 };
 #endif
 
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
 static struct cfgelem shmem_cfgelems[] = {
   BOOL("Enable", NULL, 1, "false",
     MEMBER(enable_shm),
@@ -1641,7 +1641,7 @@ static struct cfgelem shmem_cfgelems[] = {
     DESCRIPTION("<p>This element decides the cache size of shared memory subscriber. Now max cache size can be 256.</p>")),
   END_MARKER
 };
-#endif
+//#endif
 
 static struct cfgelem discovery_peer_cfgattrs[] = {
   STRING("Address", NULL, 1, NULL,
@@ -1996,7 +1996,7 @@ static struct cfgelem domain_cfgelems[] = {
       "using SSL/TLS for DDSI over TCP.</p>"
     )),
 #endif
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
   GROUP("SharedMemory", shmem_cfgelems, NULL, 1,
     NOMEMBER,
     NOFUNCTIONS,
@@ -2004,7 +2004,7 @@ static struct cfgelem domain_cfgelems[] = {
       "<p>The Shared Memory element allows specifying various parameters "
       "related to using shared memory.</p>"
     )),
-#endif
+//#endif
   END_MARKER
 };
 

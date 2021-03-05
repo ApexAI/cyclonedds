@@ -63,7 +63,7 @@ static int get_locator (const struct ddsi_domaingv *gv, ddsi_locator_t *loc, con
   {
     for (l = locs->first; l != NULL; l = l->next)
     {
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
       if (gv->config.enable_shm)
       {
         if (l->loc.kind == NN_LOCATOR_KIND_SHEM && memcmp (gv->loc_iceoryx_addr.address, l->loc.address, sizeof (gv->loc_iceoryx_addr.address)) == 0)
@@ -73,7 +73,7 @@ static int get_locator (const struct ddsi_domaingv *gv, ddsi_locator_t *loc, con
           return 1;
         }
       }
-#endif
+//#endif
       if (l->loc.kind == NN_LOCATOR_KIND_UDPv4MCGEN)
       {
         *loc = l->loc;
@@ -214,7 +214,7 @@ void get_participant_builtin_topic_data (const struct participant *pp, ddsi_plis
     dst->aliased |= PP_DOMAIN_TAG;
     dst->domain_tag = pp->e.gv->config.domainTag;
   }
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
   if (pp->e.gv->config.enable_shm)
   {
     dst->default_unicast_locators.n = 2;
@@ -229,7 +229,7 @@ void get_participant_builtin_topic_data (const struct participant *pp, ddsi_plis
     locs->def_uni_loc_two.loc = pp->e.gv->loc_iceoryx_addr;
   }
   else
-#endif /*DDS_HAS_SHM*/
+//#endif /*DDS_HAS_SHM*/
   {
     dst->default_unicast_locators.n = 1;
     dst->default_unicast_locators.first =
@@ -278,7 +278,7 @@ void get_participant_builtin_topic_data (const struct participant *pp, ddsi_plis
     {
       dst->present |= PP_DEFAULT_MULTICAST_LOCATOR | PP_METATRAFFIC_MULTICAST_LOCATOR;
       dst->aliased |= PP_DEFAULT_MULTICAST_LOCATOR | PP_METATRAFFIC_MULTICAST_LOCATOR;
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
       if (pp->e.gv->config.enable_shm)
       {
         dst->default_multicast_locators.n = 2;
@@ -295,7 +295,7 @@ void get_participant_builtin_topic_data (const struct participant *pp, ddsi_plis
         locs->meta_multi_loc_one.loc = pp->e.gv->loc_meta_mc;
       }
       else
-#endif /*DDS_HAS_SHM*/
+//#endif /*DDS_HAS_SHM*/
       {
         dst->default_multicast_locators.n = 1;
         dst->default_multicast_locators.first =

@@ -1181,13 +1181,14 @@ static ssize_t nn_xpack_send1 (const ddsi_locator_t *loc, void * varg)
       return 0;
     }
   }
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
   // SHM_TODO: We avoid sending packet while data is SHMEM.
   //           I'm not sure whether this is correct or not.
+  // ok for now but proabbly needs to be adapted
   if (!gv->mute && loc->kind != NN_LOCATOR_KIND_SHEM)
-#else
-  if (!gv->mute)
-#endif
+// #else
+//   if (!gv->mute)
+// #endif
   {
     nbytes = nn_xpack_send_rtps(xp, loc);
 

@@ -243,7 +243,7 @@ ddsrt_getifaddrs(
   return err;
 }
 
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
 // Although this is not just used by iceoryx, we still put it under iceoryx temporarily.
 #if defined __linux
 #include <linux/if_packet.h>
@@ -283,4 +283,4 @@ dds_return_t ddsrt_eth_get_mac_addr (char *interface_name, unsigned char *mac_ad
     ddsrt_freeifaddrs (ifa_root);
     return ret;
 }
-#endif
+//#endif

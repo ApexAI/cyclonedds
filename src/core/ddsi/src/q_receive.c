@@ -62,6 +62,8 @@
 
 #ifdef DDS_HAS_SHM
 #include "ice_clib.h"
+#else
+#include "iceoryx_binding_c/binding.h"
 #endif
 
 /*

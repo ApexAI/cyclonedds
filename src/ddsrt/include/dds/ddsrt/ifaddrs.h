@@ -47,12 +47,12 @@ DDS_EXPORT void
 ddsrt_freeifaddrs(
   ddsrt_ifaddrs_t *ifa);
 
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
 DDS_EXPORT dds_return_t
 ddsrt_eth_get_mac_addr(
   char *interface_name,
   unsigned char *mac_addr);
-#endif
+//#endif
 
 #if defined (__cplusplus)
 }

@@ -60,7 +60,7 @@ enum ddsi_boolean_default {
   DDSI_BOOLDEF_TRUE
 };
 
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
 enum ddsi_shm_loglevel {
   DDSI_SHM_OFF = 0,
   DDSI_SHM_FATAL,
@@ -70,17 +70,7 @@ enum ddsi_shm_loglevel {
   DDSI_SHM_DEBUG,
   DDSI_SHM_VERBOSE
 };
-#else
-enum ddsi_shm_loglevel {
-  DDSI_SHM_OFF = 0,
-  DDSI_SHM_FATAL,
-  DDSI_SHM_ERROR,
-  DDSI_SHM_WARN,
-  DDSI_SHM_INFO,
-  DDSI_SHM_DEBUG,
-  DDSI_SHM_VERBOSE
-};
-#endif
+//#endif
 
 #define DDSI_PARTICIPANT_INDEX_AUTO -1
 #define DDSI_PARTICIPANT_INDEX_NONE -2
@@ -395,14 +385,11 @@ struct ddsi_config
   struct ddsi_config_omg_security_listelem *omg_security_configuration;
 #endif
 
-#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
   int enable_shm;
   enum ddsi_shm_loglevel shm_log_lvl;
   uint32_t sub_cache_size;
-#endif
-  int enable_shm;
-  enum ddsi_shm_loglevel shm_log_lvl;
-  uint32_t sub_cache_size;
+//#endif
 
 #if defined (__cplusplus)
 public:
