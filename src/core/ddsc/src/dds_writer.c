@@ -35,6 +35,8 @@
 
 #ifdef DDS_HAS_SHM
 #include "ice_clib.h"
+#else
+#include "iceoryx_binding_c/binding.h"
 #endif
 
 DECL_ENTITY_LOCK_UNLOCK (extern inline, dds_writer)
@@ -213,6 +215,7 @@ static dds_return_t dds_writer_delete (dds_entity *e) ddsrt_nonnull_all;
 static dds_return_t dds_writer_delete (dds_entity *e)
 {
   dds_writer * const wr = (dds_writer *) e;
+
 #ifdef DDS_HAS_SHM
   if (e->m_domain->gv.config.enable_shm)
   {
@@ -221,7 +224,17 @@ static dds_return_t dds_writer_delete (dds_entity *e)
     ice_clib_release_publisher (wr->pub);
     wr->pub = NULL;
   }
+#else
+  if (e->m_domain->gv.config.enable_shm)
+  {
+    DDS_CLOG (DDS_LC_SHM, &e->m_domain->gv.logconfig, "Release iceoryx's publisher\n");
+    iox_pub_offer (wr->m_pub);
+    iox_pub_deinit (wr->m_pub);
+    wr->m_pub = NULL;
+  }
 #endif
+
+
   /* FIXME: not freeing WHC here because it is owned by the DDSI entity */
   thread_state_awake (lookup_thread_state (), &e->m_domain->gv);
   nn_xpack_free (wr->m_xp);
@@ -413,6 +426,19 @@ dds_entity_t dds_create_writer (dds_entity_t participant_or_publisher, dds_entit
     // SHM_TODO: We should do error handling if there is duplicate publish topic. iceoryx doesn't support multiple pub now.
     wr->pub = ice_clib_create_publisher ("DDS", "Cyclone", topic_name);
     ice_clib_offer (wr->pub);
+  }
+#else
+  if (wr->m_entity.m_domain->gv.config.enable_shm)
+  {
+    size_t name_size;
+    rc = dds_get_name_size (topic, &name_size);
+    assert (rc == DDS_RETCODE_OK);
+    char topic_name[name_size+1];
+    rc = dds_get_name (topic, topic_name, name_size+1);
+    assert (rc == DDS_RETCODE_OK);
+    DDS_CLOG (DDS_LC_SHM, &wr->m_entity.m_domain->gv.logconfig, "Writer's topic name will be DDS:Cyclone:%s\n", topic_name);
+    wr->m_pub = iox_pub_init (&wr->m_pub_storage, "DDS", "Cyclone", topic_name, NULL);
+    iox_pub_offer (wr->m_pub);
   }
 #endif
 

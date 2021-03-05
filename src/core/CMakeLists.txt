@@ -9,6 +9,8 @@
 #
 # SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
 #
+project(CycloneDDS)
+
 include (GenerateExportHeader)
 
 FUNCTION(PREPEND var prefix)
@@ -40,10 +42,16 @@ if(ENABLE_SECURITY)
     $<BUILD_INTERFACE:$<TARGET_PROPERTY:security_api,INTERFACE_INCLUDE_DIRECTORIES>>)
 endif()
 
-if(ENABLE_SHM)
+#if(ENABLE_SHM)
+  set_target_properties(ddsc
+  PROPERTIES
+  CXX_STANDARD_REQUIRED ON
+  CXX_STANDARD 14
+  POSITION_INDEPENDENT_CODE ON
+  )
   find_package(iceoryx_binding_c)
-  target_link_libraries(ddsc PRIVATE iceoryx_binding_c::iceoryx_binding_c)
-endif()
+  target_link_libraries(ddsc PRIVATE iceoryx_binding_c::iceoryx_binding_c stdc++)
+#endif()
 
 include(ddsi/CMakeLists.txt)
 include(ddsc/CMakeLists.txt)

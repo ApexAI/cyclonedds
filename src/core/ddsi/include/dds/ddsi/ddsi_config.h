@@ -70,6 +70,16 @@ enum ddsi_shm_loglevel {
   DDSI_SHM_DEBUG,
   DDSI_SHM_VERBOSE
 };
+#else
+enum ddsi_shm_loglevel {
+  DDSI_SHM_OFF = 0,
+  DDSI_SHM_FATAL,
+  DDSI_SHM_ERROR,
+  DDSI_SHM_WARN,
+  DDSI_SHM_INFO,
+  DDSI_SHM_DEBUG,
+  DDSI_SHM_VERBOSE
+};
 #endif
 
 #define DDSI_PARTICIPANT_INDEX_AUTO -1
@@ -390,6 +400,9 @@ struct ddsi_config
   enum ddsi_shm_loglevel shm_log_lvl;
   uint32_t sub_cache_size;
 #endif
+  int enable_shm;
+  enum ddsi_shm_loglevel shm_log_lvl;
+  uint32_t sub_cache_size;
 
 #if defined (__cplusplus)
 public:

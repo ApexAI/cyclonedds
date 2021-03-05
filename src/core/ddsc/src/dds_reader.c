@@ -38,6 +38,9 @@
 #ifdef DDS_HAS_SHM
 #include "dds/ddsi/q_receive.h"
 #include "ice_clib.h"
+#else
+#include "dds/ddsi/q_receive.h"
+#include "iceoryx_binding_c/binding.h"
 #endif
 
 DECL_ENTITY_LOCK_UNLOCK (extern inline, dds_reader)
@@ -90,6 +93,14 @@ static dds_return_t dds_reader_delete (dds_entity *e)
     ice_clib_unsetRecvHandler (rd->sub);
     ice_clib_release_subscriber (rd->sub);
     rd->sub = NULL;
+  }
+#else
+  if (e->m_domain->gv.config.enable_shm)
+  {
+    DDS_CLOG (DDS_LC_SHM, &e->m_domain->gv.logconfig, "Release iceoryx's subscriber\n");
+    iox_sub_unsubscribe (rd->m_sub);
+    iox_sub_deinit (rd->m_sub);
+    rd->m_sub = NULL;
   }
 #endif
 
@@ -580,6 +591,19 @@ static dds_entity_t dds_create_reader_int (dds_entity_t participant_or_subscribe
     rd->sub = ice_clib_create_subscriber ("DDS", "Cyclone", topic_name);
     ice_clib_setRecvHandler (rd->sub, read_callback, rd);
     ice_clib_subscribe (rd->sub, rd->m_entity.m_domain->gv.config.sub_cache_size);
+  }
+#else
+size_t name_size;
+  if (rd->m_entity.m_domain->gv.config.enable_shm)
+  {
+    rc = dds_get_name_size (topic, &name_size);
+    assert (rc == DDS_RETCODE_OK);
+    char topic_name[name_size+1];
+    rc = dds_get_name (topic, topic_name, name_size+1);
+    assert (rc == DDS_RETCODE_OK);
+    DDS_CLOG (DDS_LC_SHM, &rd->m_entity.m_domain->gv.logconfig, "Reader's topic name will be DDS:Cyclone:%s\n", topic_name);
+    rd->m_sub = iox_sub_init (&rd->m_sub_storage, "DDS", "Cyclone", topic_name, NULL);
+    iox_sub_subscribe (rd->m_sub);
   }
 #endif
 

@@ -22,6 +22,10 @@
 #include "dds/ddsi/ddsi_builtin_topic_if.h"
 #include "dds__handles.h"
 
+#ifdef DDS_HAS_SHM
+#endif
+#include "iceoryx_binding_c/binding.h"
+
 #if defined (__cplusplus)
 extern "C" {
 #endif
@@ -282,6 +286,9 @@ typedef struct dds_reader {
   unsigned m_wrapped_sertopic : 1; /* set iff reader's topic is a wrapped ddsi_sertopic for backwards compatibility */
 #ifdef DDS_HAS_SHM
   struct ice_subscriber *sub;
+#else
+  iox_sub_storage_t m_sub_storage;
+  iox_sub_t m_sub;
 #endif
 
   /* Status metrics */
@@ -303,6 +310,9 @@ typedef struct dds_writer {
   bool whc_batch; /* FIXME: channels + latency budget */
 #ifdef DDS_HAS_SHM
   struct ice_publisher *pub;
+#else
+  iox_pub_storage_t m_pub_storage;
+  iox_pub_t m_pub;
 #endif
 
   /* Status metrics */
