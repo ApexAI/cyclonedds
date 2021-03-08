@@ -21,9 +21,11 @@
 extern "C" {
 #endif
 
+struct dds_reader;
 struct shm_listener {
- iox_ws_storage_t m_ws_storage;
- iox_ws_t m_ws;
+ iox_ws_storage_t m_waitset_storage;
+ iox_ws_t m_waitset;
+ iox_user_trigger_t m_trigger;
  //add all necessary entities to run the single listener thread for the waitset but beware of circular dependencies
  //with dds__types  
 };
@@ -32,7 +34,9 @@ typedef struct shm_listener shm_listener_t;
 
 void shm_listener_init(shm_listener_t* listener);
 
+void shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader);
 
+void shm_listener_detach_reader(shm_listener_t* listener, struct dds_reader* reader);
 
 #if defined (__cplusplus)
 }
