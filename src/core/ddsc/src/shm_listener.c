@@ -19,7 +19,9 @@
 extern "C" {
 #endif
 
-void shm_listener_init(shm_listener_t* listener) {    
+void shm_listener_init(shm_listener_t* listener) {
+    ddsrt_mutex_init(&listener->m_lock);
+        
     listener->m_waitset = iox_ws_init(&listener->m_waitset_storage);
 
     listener->m_wakeup_trigger = iox_user_trigger_init(&listener->m_wakeup_trigger_storage);
@@ -56,6 +58,7 @@ void shm_listener_destroy(shm_listener_t* listener) {
     //note: we must ensure no readers are actively using the waitset anymore,
     //the listener and thus the waitset is to be destroyed after all readers are destroyed
     iox_ws_deinit(listener->m_waitset);
+    ddsrt_mutex_destroy(&listener->m_lock);
 }
 
 dds_return_t shm_listener_wake(shm_listener_t* listener) {
@@ -79,7 +82,7 @@ dds_return_t shm_listener_detach_reader(shm_listener_t* listener, struct dds_rea
 }
 
 dds_return_t shm_listener_deferred_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {
-    //TODO: mutex (unlock before return)
+    ddsrt_mutex_lock(&listener->m_lock);
 
     //store the attach request
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
@@ -87,17 +90,24 @@ dds_return_t shm_listener_deferred_attach_reader(shm_listener_t* listener, struc
             listener->m_readers_to_attach[i] = reader;
             ++listener->m_number_of_modifications_pending;
             shm_listener_wake(listener);
+
+            ddsrt_mutex_unlock(&listener->m_lock);
             return DDS_RETCODE_OK;
         }
-    }   
+    }
+
+    ddsrt_mutex_unlock(&listener->m_lock);   
     return DDS_RETCODE_OUT_OF_RESOURCES;
 }
 
 dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struct dds_reader* reader) {
-    //TODO: mutex (unlock before return)
+    ddsrt_mutex_lock(&listener->m_lock);
+
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
         if(listener->m_readers_to_attach[i] == reader) {
-            listener->m_readers_to_attach[i] = NULL;           
+            listener->m_readers_to_attach[i] = NULL;
+
+            ddsrt_mutex_unlock(&listener->m_lock);           
             return DDS_RETCODE_OK; //not attached yet, but we do not need to attach and then detach it
         }
     }
@@ -107,19 +117,24 @@ dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struc
             listener->m_readers_to_detach[i] = reader;
             ++listener->m_number_of_modifications_pending;
             shm_listener_wake(listener);
+
+            ddsrt_mutex_unlock(&listener->m_lock);
             return DDS_RETCODE_OK;
         }
-    }    
+    }
+
+    ddsrt_mutex_unlock(&listener->m_lock);    
     return DDS_RETCODE_OUT_OF_RESOURCES;
 }
 
 dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listener) {
-    //TODO: mutex (unlock before return)
+    ddsrt_mutex_lock(&listener->m_lock);
     //problem: we have a potential races: some of these readers may not even exist anymore
     //         but due to limitations of the waitset we also cannot attach/detach them while waiting
     //         (which will happen often)
     
     if(listener->m_number_of_modifications_pending == 0) {
+        ddsrt_mutex_unlock(&listener->m_lock);
         return DDS_RETCODE_OK;
     }
     
@@ -137,8 +152,9 @@ dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listene
             listener->m_readers_to_detach[i] = NULL;
         }
     }
-
     listener->m_number_of_modifications_pending = 0;
+
+    ddsrt_mutex_unlock(&listener->m_lock);
     return rc;
 }
 

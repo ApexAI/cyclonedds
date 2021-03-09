@@ -18,6 +18,7 @@
 #include "iceoryx_binding_c/binding.h"
 
 #include "dds/ddsrt/threads.h"
+#include "dds/ddsrt/sync.h"
 
 #if defined (__cplusplus)
 extern "C" {
@@ -40,6 +41,8 @@ enum shm_listener_run_states {
 };
 
 struct shm_listener {
+    ddsrt_mutex_t m_lock;
+
     iox_ws_storage_t m_waitset_storage;
     iox_ws_t m_waitset;
 
