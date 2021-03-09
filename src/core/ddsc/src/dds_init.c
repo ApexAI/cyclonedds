@@ -169,7 +169,7 @@ static dds_return_t dds_fini (struct dds_entity *e)
   //shut down the listener, there are no readers anymore
   //TODO: correct assumption/way of proceeding here?
   shm_listener_destroy(&dds_global.m_shm_listener);
-//#endif
+//#endif                         
   ddsrt_mutex_unlock (&dds_global.m_mutex);
 
   ddsrt_mutex_lock (init_mutex);

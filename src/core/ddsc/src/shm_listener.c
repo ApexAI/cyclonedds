@@ -63,8 +63,10 @@ dds_return_t shm_listener_wake(shm_listener_t* listener) {
     return DDS_RETCODE_OK;
 }
 
-dds_return_t shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {    
-    uint64_t reader_id = reader->m_entity.m_guid.entityid.u;
+dds_return_t shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {
+    //using the pointer is the fastest way and should be safe without deferred attach/detach  
+    //uint64_t reader_id = reader->m_entity.m_guid.entityid.u;
+    uint64_t reader_id = (uint64_t) reader; 
     if(iox_ws_attach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA, reader_id, NULL) !=WaitSetResult_SUCCESS) {        
         return DDS_RETCODE_OUT_OF_RESOURCES;
     }
@@ -113,6 +115,9 @@ dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struc
 
 dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listener) {
     //TODO: mutex (unlock before return)
+    //problem: we have a potential races: some of these readers may not even exist anymore
+    //         but due to limitations of the waitset we also cannot attach/detach them while waiting
+    //         (which will happen often)
     
     if(listener->m_number_of_modifications_pending == 0) {
         return DDS_RETCODE_OK;
@@ -167,7 +172,8 @@ uint32_t shm_listener_wait_thread(void* arg) {
                 //some reader got data, identify the reader
                 uint64_t reader_id = iox_event_info_get_event_id(event);
 
-                //TODO: can we do this? how can we get the reader from the id?
+                //TODO: with deferred detach there is a potential to cause use
+                //after free errors here, the reader may not exist anymore
                 dds_reader * const reader = (dds_reader *) reader_id;
                 const void* chunk;
 
