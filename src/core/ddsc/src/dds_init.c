@@ -133,7 +133,7 @@ dds_return_t dds_init (void)
   ddsrt_atomic_st32 (&dds_state, CDDS_STATE_READY);
 
   //#ifdef DDS_HAS_SHM
-  //shm_listener_init(&dds_global.m_shm_listener);
+  shm_listener_init(&dds_global.m_shm_listener);
   //#endif
 
   ddsrt_mutex_unlock (init_mutex);
@@ -164,6 +164,12 @@ static dds_return_t dds_fini (struct dds_entity *e)
   ddsrt_mutex_lock (&dds_global.m_mutex);
   while (!ddsrt_avl_is_empty (&dds_global.m_domains))
     ddsrt_cond_wait (&dds_global.m_cond, &dds_global.m_mutex);
+  
+//#ifdef DDS_HAS_SHM
+  //shut down the listener, there are no readers anymore
+  //TODO: correct assumption/way of proceeding here?
+  shm_listener_deinit(&dds_global.m_shm_listener);
+//#endif
   ddsrt_mutex_unlock (&dds_global.m_mutex);
 
   ddsrt_mutex_lock (init_mutex);
