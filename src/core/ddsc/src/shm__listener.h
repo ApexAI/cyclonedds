@@ -46,6 +46,7 @@ struct shm_listener {
     //TODO: must be protected by some mutex
     //note: a little inefficient with arrays and brute force but it is an intermediate solution
     //      and will be replaced with a listener from iceoryx
+    uint32_t m_number_of_modifications_pending; //TODO: should be atomic
     struct dds_reader* m_readers_to_attach[SHM_MAX_NUMBER_OF_READERS];
     struct dds_reader* m_readers_to_detach[SHM_MAX_NUMBER_OF_READERS];
  

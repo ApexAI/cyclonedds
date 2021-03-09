@@ -25,6 +25,7 @@ void shm_listener_init(shm_listener_t* listener) {
     listener->m_wakeup_trigger = iox_user_trigger_init(&listener->m_wakeup_trigger_storage);
     iox_ws_attach_user_trigger_event(listener->m_waitset, listener->m_wakeup_trigger, 0, NULL);
 
+    listener->m_number_of_modifications_pending = 0;
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
         listener->m_readers_to_attach[i] = NULL;
         listener->m_readers_to_detach[i] = NULL;
@@ -62,8 +63,7 @@ dds_return_t shm_listener_wake(shm_listener_t* listener) {
     return DDS_RETCODE_OK;
 }
 
-dds_return_t shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {
-    //TODO: concurrency protection/funnel everything into the waitset thread?
+dds_return_t shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {    
     uint64_t reader_id = reader->m_entity.m_guid.entityid.u;
     if(iox_ws_attach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA, reader_id, NULL) !=WaitSetResult_SUCCESS) {        
         return DDS_RETCODE_OUT_OF_RESOURCES;
@@ -77,12 +77,13 @@ dds_return_t shm_listener_detach_reader(shm_listener_t* listener, struct dds_rea
 }
 
 dds_return_t shm_listener_deferred_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {
-    //TODO: mutex
+    //TODO: mutex (unlock before return)
 
     //store the attach request
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
         if(listener->m_readers_to_attach[i] == NULL) {
             listener->m_readers_to_attach[i] = reader;
+            ++listener->m_number_of_modifications_pending;
             shm_listener_wake(listener);
             return DDS_RETCODE_OK;
         }
@@ -91,7 +92,7 @@ dds_return_t shm_listener_deferred_attach_reader(shm_listener_t* listener, struc
 }
 
 dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struct dds_reader* reader) {
-    //TODO: mutex
+    //TODO: mutex (unlock before return)
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
         if(listener->m_readers_to_attach[i] == reader) {
             listener->m_readers_to_attach[i] = NULL;           
@@ -102,6 +103,7 @@ dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struc
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
         if(listener->m_readers_to_detach[i] == NULL) {
             listener->m_readers_to_detach[i] = reader;
+            ++listener->m_number_of_modifications_pending;
             shm_listener_wake(listener);
             return DDS_RETCODE_OK;
         }
@@ -110,7 +112,12 @@ dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struc
 }
 
 dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listener) {
-    //TODO: mutex
+    //TODO: mutex (unlock before return)
+    
+    if(listener->m_number_of_modifications_pending == 0) {
+        return DDS_RETCODE_OK;
+    }
+    
     dds_return_t rc = DDS_RETCODE_OK;
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
         if(listener->m_readers_to_attach[i] != NULL) {
@@ -125,6 +132,8 @@ dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listene
             listener->m_readers_to_detach[i] = NULL;
         }
     }
+
+    listener->m_number_of_modifications_pending = 0;
     return rc;
 }
 
@@ -141,15 +150,19 @@ uint32_t shm_listener_wait_thread(void* arg) {
         number_of_events = iox_ws_wait(listener->m_waitset, events, SHM_MAX_NUMBER_OF_READERS,
                                        &number_of_missed_events);
 
-        //should not happen as the waitset is designed is configured here (?)
+        //should not happen as the waitset is designed is configured here
         assert(number_of_missed_events == 0);
+
+        //we woke up either due to termination request, modification request or
+        //because some reader got data
+        //check all the events and handle them accordingly
 
         for (uint64_t i = 0; i < number_of_events; ++i) {
             iox_event_info_t event = events[i];
             if (iox_event_info_does_originate_from_user_trigger(event, listener->m_wakeup_trigger))
             {
                 //do we have to do something or terminate?
-                //TODO: waitset modification here
+                shm_listener_perform_deferred_modifications(listener);
             } else {
                 //some reader got data, identify the reader
                 uint64_t reader_id = iox_event_info_get_event_id(event);
@@ -165,7 +178,11 @@ uint32_t shm_listener_wait_thread(void* arg) {
                 }
             }
         }
+
+        //now that we woke up and performed the required actions
+        //we will check for termination request and if there is none wait again
     }
+
     listener->m_run_state = SHM_LISTENER_STOPPED;
     return 0;
 }
