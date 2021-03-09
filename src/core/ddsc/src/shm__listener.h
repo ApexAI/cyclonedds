@@ -23,29 +23,39 @@
 extern "C" {
 #endif
 
-#define SHM_MAX_NUMBER_OF_READERS 128
+//TODO: the waitset has a maximum number of events that can be registered but this can only be queried
+// at runtime
+// currently it is hardcoded to be 128 events in the iceoryx C binding
+// and we need one event for the wake up trigger
+#define SHM_MAX_NUMBER_OF_READERS 127
 
 //forward declaration to avoid circular dependencies with dds__types.h
 struct dds_reader;
 
-enum shm_run_states {
+enum shm_listener_run_states {
     SHM_LISTENER_STOP = 0,
     SHM_LISTENER_RUN = 1,
     SHM_LISTENER_STOPPED = 2,
     SHM_LISTENER_NOT_RUNNING = 3
 };
+
 struct shm_listener {
- iox_ws_storage_t m_waitset_storage;
- iox_ws_t m_waitset;
+    iox_ws_storage_t m_waitset_storage;
+    iox_ws_t m_waitset;
+
+    //TODO: must be protected by some mutex
+    //note: a little inefficient with arrays and brute force but it is an intermediate solution
+    //      and will be replaced with a listener from iceoryx
+    struct dds_reader* m_readers_to_attach[SHM_MAX_NUMBER_OF_READERS];
+    struct dds_reader* m_readers_to_detach[SHM_MAX_NUMBER_OF_READERS];
  
+    //use this if we wait but want to wake up for some reason
+    //e.g. terminate, update the waitset etc.
+    iox_user_trigger_storage_t m_wakeup_trigger_storage;
+    iox_user_trigger_t m_wakeup_trigger;
+    uint32_t m_run_state; //TODO: should be atomic
 
- //use this if we wait but want to wake up for some reason
- //e.g. terminate, update the waitset etc.
- iox_user_trigger_t m_wakeup_trigger;
- uint32_t m_run_state; //TODO: should be atomic
-
- ddsrt_thread_t m_thread;
-
+    ddsrt_thread_t m_thread;
 };
 
 typedef struct shm_listener shm_listener_t;
@@ -54,9 +64,17 @@ void shm_listener_init(shm_listener_t* listener);
 
 void shm_listener_destroy(shm_listener_t* listener);
 
-void shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader);
+dds_return_t shm_listener_wake(shm_listener_t* listener);
 
-void shm_listener_detach_reader(shm_listener_t* listener, struct dds_reader* reader);
+dds_return_t shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader);
+
+dds_return_t shm_listener_detach_reader(shm_listener_t* listener, struct dds_reader* reader);
+
+dds_return_t shm_listener_deferred_attach_reader(shm_listener_t* listener, struct dds_reader* reader);
+
+dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struct dds_reader* reader);
+
+dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listener);
 
 uint32_t shm_listener_wait_thread(void* listener);
 

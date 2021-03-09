@@ -100,7 +100,7 @@ static dds_return_t dds_reader_delete (dds_entity *e)
   {
     DDS_CLOG (DDS_LC_SHM, &e->m_domain->gv.logconfig, "Release iceoryx's subscriber\n");
     iox_sub_unsubscribe (rd->m_sub);
-    shm_listener_detach_reader(&dds_global.m_shm_listener, rd);
+    shm_listener_deferred_detach_reader(&dds_global.m_shm_listener, rd);
     iox_sub_deinit (rd->m_sub);
     rd->m_sub = NULL;
   }
@@ -605,7 +605,7 @@ size_t name_size;
     assert (rc == DDS_RETCODE_OK);
     DDS_CLOG (DDS_LC_SHM, &rd->m_entity.m_domain->gv.logconfig, "Reader's topic name will be DDS:Cyclone:%s\n", topic_name);
     rd->m_sub = iox_sub_init (&rd->m_sub_storage, "DDS", "Cyclone", topic_name, NULL);
-    shm_listener_attach_reader(&dds_global.m_shm_listener, rd);
+    shm_listener_deferred_attach_reader(&dds_global.m_shm_listener, rd);
     iox_sub_subscribe (rd->m_sub);
   }
 #endif
