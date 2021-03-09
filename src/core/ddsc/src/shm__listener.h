@@ -17,6 +17,8 @@
 
 #include "iceoryx_binding_c/binding.h"
 
+#include "dds/ddsrt/threads.h"
+
 #if defined (__cplusplus)
 extern "C" {
 #endif
@@ -30,6 +32,7 @@ enum shm_run_states {
     SHM_LISTENER_STOP = 0,
     SHM_LISTENER_RUN = 1,
     SHM_LISTENER_STOPPED = 2,
+    SHM_LISTENER_NOT_RUNNING = 3
 };
 struct shm_listener {
  iox_ws_storage_t m_waitset_storage;
@@ -40,19 +43,22 @@ struct shm_listener {
  //e.g. terminate, update the waitset etc.
  iox_user_trigger_t m_wakeup_trigger;
  uint32_t m_run_state; //TODO: should be atomic
+
+ ddsrt_thread_t m_thread;
+
 };
 
 typedef struct shm_listener shm_listener_t;
 
 void shm_listener_init(shm_listener_t* listener);
 
-void shm_listener_deinit(shm_listener_t* listener);
+void shm_listener_destroy(shm_listener_t* listener);
 
 void shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader);
 
 void shm_listener_detach_reader(shm_listener_t* listener, struct dds_reader* reader);
 
-void shm_listener_wait_thread_main(shm_listener_t* listener);
+uint32_t shm_listener_wait_thread(void* listener);
 
 #if defined (__cplusplus)
 }

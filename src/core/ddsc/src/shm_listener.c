@@ -21,14 +21,33 @@ extern "C" {
 
 void shm_listener_init(shm_listener_t* listener) {
     listener->m_waitset = iox_ws_init(&listener->m_waitset_storage);
-    iox_ws_attach_user_trigger_event(listener->m_waitset, listener->m_wakeup_trigger, 0U, NULL);
+    iox_ws_attach_user_trigger_event(listener->m_waitset, listener->m_wakeup_trigger, 0, NULL);
     listener->m_run_state = SHM_LISTENER_RUN;
+
+    ddsrt_threadattr_t attr;
+    ddsrt_threadattr_init (&attr);
+    dds_return_t rc = ddsrt_thread_create(&listener->m_thread, "shm_listener_thread", 
+                                          &attr, shm_listener_wait_thread, listener);
+    if(rc != DDS_RETCODE_OK) {
+        listener->m_run_state = SHM_LISTENER_NOT_RUNNING;
+    }
+
 }
 
-void shm_listener_deinit(shm_listener_t* listener) {
-    listener->m_run_state = SHM_LISTENER_STOP;
-    iox_user_trigger_trigger(listener->m_wakeup_trigger);
-    //TODO: more cleanup (thread) ?
+void shm_listener_destroy(shm_listener_t* listener) {
+    if(listener->m_run_state != SHM_LISTENER_NOT_RUNNING) {
+        listener->m_run_state = SHM_LISTENER_STOP;
+        iox_user_trigger_trigger(listener->m_wakeup_trigger);
+        uint32_t result;
+        dds_return_t rc = ddsrt_thread_join(listener->m_thread, &result);
+
+        if(rc == DDS_RETCODE_OK) {
+            listener->m_run_state = SHM_LISTENER_NOT_RUNNING;
+        }
+    }
+    //note: we must ensure no readers are actively using the waitset anymore,
+    //the listener and thus the waitset is to be destroyed after all readers are destroyed
+    iox_ws_deinit(listener->m_waitset);
 }
 
 void shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {
@@ -40,7 +59,8 @@ void shm_listener_detach_reader(shm_listener_t* listener, struct dds_reader* rea
     iox_ws_detach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA);
 }
 
-void shm_listener_wait_thread_main(shm_listener_t* listener) {
+uint32_t shm_listener_wait_thread(void* arg) {
+    shm_listener_t* listener = arg; 
 
     uint64_t missed_elements = 0;
     uint64_t number_of_events = 0;
@@ -73,12 +93,9 @@ void shm_listener_wait_thread_main(shm_listener_t* listener) {
                 }
             }
         }
-        //we can do this here since the thread will not start again and no readers should be active
-        //and use the waitset
-        //TODO: look out for races/lifetime issues of the waitset contained in dds_global
-        iox_ws_deinit(listener->m_waitset);
-        listener->m_run_state = SHM_LISTENER_STOPPED;
     }
+    listener->m_run_state = SHM_LISTENER_STOPPED;
+    return 0;
 }
 
 #if defined (__cplusplus)
