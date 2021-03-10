@@ -268,6 +268,36 @@ dds_return_t dds_write_impl (dds_writer *wr, const void * data, dds_time_t tstam
       ice_clib_sendChunk (wr->pub, data_ptr);
       ddsi_serdata_to_ser_unref (d, &iov);
     }
+#else
+    if (wr->m_entity.m_domain->gv.config.enable_shm && wr->m_wr->num_ice_proxy_reader)
+    {
+      struct iceoryx_header ice_hdr;
+      ddsrt_iovec_t iov;
+      uint32_t size = ddsi_serdata_size (d);
+      (void) ddsi_serdata_to_ser_ref (d, 0, size, &iov);
+      uint32_t send_size = (uint32_t) iov.iov_len;
+      char *send_ptr = iov.iov_base;
+      void *data_ptr;
+      while (1)
+      {
+        if(iox_pub_loan_chunk (wr->m_pub, &data_ptr, (unsigned int) (sizeof (ice_hdr) + send_size))
+           == AllocationResult_SUCCESS) {
+             break;
+        }
+        // SHM_TODO: Maybe there is a better way to do while unable to allocate.
+        //           BTW, how long I should sleep is also another problem.
+        dds_sleepfor (DDS_MSECS (1));
+      }
+      ice_hdr.guid = ddsi_wr->e.guid;
+      ice_hdr.tstamp = tstamp;
+      ice_hdr.data_size = send_size;
+      ice_hdr.data_kind = writekey ? SDK_KEY : SDK_DATA;
+      // SHM_TODO: Is there any way to avoid copy?
+      memcpy (data_ptr, &ice_hdr, sizeof (ice_hdr));
+      memcpy (data_ptr + sizeof (ice_hdr), send_ptr, send_size);
+      iox_pub_publish_chunk (wr->m_pub, data_ptr);
+      ddsi_serdata_to_ser_unref (d, &iov);
+    }
 #endif
 
     tk = ddsi_tkmap_lookup_instance_ref (wr->m_entity.m_domain->gv.m_tkmap, d);

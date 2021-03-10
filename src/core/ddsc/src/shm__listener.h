@@ -48,7 +48,7 @@ struct shm_listener {
 
     //note: a little inefficient with arrays and brute force but it is an intermediate solution
     //      and will be replaced with a listener from iceoryx
-    uint32_t m_number_of_modifications_pending; //TODO: should be atomic
+    uint32_t m_number_of_modifications_pending;
     struct dds_reader* m_readers_to_attach[SHM_MAX_NUMBER_OF_READERS];
     struct dds_reader* m_readers_to_detach[SHM_MAX_NUMBER_OF_READERS];
  
@@ -79,7 +79,7 @@ dds_return_t shm_listener_deferred_detach_reader(shm_listener_t* listener, struc
 
 dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listener);
 
-uint32_t shm_listener_wait_thread(void* listener);
+uint32_t shm_listener_monitor_thread(void* listener);
 
 #if defined (__cplusplus)
 }

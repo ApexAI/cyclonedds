@@ -36,8 +36,8 @@ void shm_listener_init(shm_listener_t* listener) {
     listener->m_run_state = SHM_LISTENER_RUN;
     ddsrt_threadattr_t attr;
     ddsrt_threadattr_init (&attr);
-    dds_return_t rc = ddsrt_thread_create(&listener->m_thread, "shm_listener_thread", 
-                                          &attr, shm_listener_wait_thread, listener);
+    dds_return_t rc = ddsrt_thread_create(&listener->m_thread, "shm_listener_monitor_thread", 
+                                          &attr, shm_listener_monitor_thread, listener);
     if(rc != DDS_RETCODE_OK) {
         listener->m_run_state = SHM_LISTENER_NOT_RUNNING;
     }
@@ -159,7 +159,7 @@ dds_return_t shm_listener_perform_deferred_modifications(shm_listener_t* listene
 }
 
 
-uint32_t shm_listener_wait_thread(void* arg) {
+uint32_t shm_listener_monitor_thread(void* arg) {
     shm_listener_t* listener = arg; 
     uint64_t number_of_missed_events = 0;
     uint64_t number_of_events = 0;
@@ -184,9 +184,12 @@ uint32_t shm_listener_wait_thread(void* arg) {
             {
                 //do we have to do something or terminate?
                 shm_listener_perform_deferred_modifications(listener);
+                printf("shm listener woke up\n");
             } else {
                 //some reader got data, identify the reader
                 uint64_t reader_id = iox_event_info_get_event_id(event);
+
+                printf("reader %ld received data\n", reader_id);
 
                 //TODO: with deferred detach there is a potential to cause use
                 //after free errors here, the reader may not exist anymore
