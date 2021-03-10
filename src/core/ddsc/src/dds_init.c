@@ -17,6 +17,7 @@
 #include "dds/ddsrt/environ.h"
 #include "dds/ddsrt/process.h"
 #include "dds/ddsrt/heap.h"
+#include "dds/ddsrt/io.h"
 #include "dds__init.h"
 #include "dds/ddsc/dds_rhc.h"
 #include "dds__domain.h"
@@ -132,9 +133,16 @@ dds_return_t dds_init (void)
   dds_entity_init_complete (&dds_global.m_entity);
   ddsrt_atomic_st32 (&dds_state, CDDS_STATE_READY);
 
-  //#ifdef DDS_HAS_SHM
+//#ifdef DDS_HAS_SHM
+  //TODO: use a timestamp as well to make it (almost) truly unique
+  //      move to domain
+  char runtime_name[128];
+  char* p = runtime_name;
+  uint32_t pid = (uint32_t) ddsrt_getpid ();
+  ddsrt_asprintf (&p, "iox_cyclone_%d", pid);
+  iox_runtime_init (p);
   shm_listener_init(&dds_global.m_shm_listener);
-  //#endif
+//#endif
 
   ddsrt_mutex_unlock (init_mutex);
   return DDS_RETCODE_OK;
@@ -159,7 +167,7 @@ static dds_return_t dds_fini (struct dds_entity *e)
   ddsrt_mutex_t * const init_mutex = ddsrt_get_singleton_mutex ();
   /* If there are multiple domains shutting down simultaneously, the one "deleting" the top-level
      entity (and thus arriving here) may have overtaken another thread that is still in the process
-     of deleting its domain object.  For most entities such races are not an issue, but here we tear
+     of deleting its domain object.iox  For most entities such races are not an issue, but here we tear
      down the run-time, so here we must wait until everyone else is out. */
   ddsrt_mutex_lock (&dds_global.m_mutex);
   while (!ddsrt_avl_is_empty (&dds_global.m_domains))

@@ -46,7 +46,6 @@ struct shm_listener {
     iox_ws_storage_t m_waitset_storage;
     iox_ws_t m_waitset;
 
-    //TODO: must be protected by some mutex
     //note: a little inefficient with arrays and brute force but it is an intermediate solution
     //      and will be replaced with a listener from iceoryx
     uint32_t m_number_of_modifications_pending; //TODO: should be atomic
