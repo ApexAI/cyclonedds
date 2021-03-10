@@ -70,14 +70,18 @@ dds_return_t shm_listener_attach_reader(shm_listener_t* listener, struct dds_rea
     //using the pointer is the fastest way and should be safe without deferred attach/detach  
     //uint64_t reader_id = reader->m_entity.m_guid.entityid.u;
     uint64_t reader_id = (uint64_t) reader; 
-    if(iox_ws_attach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA, reader_id, NULL) !=WaitSetResult_SUCCESS) {        
+    if(iox_ws_attach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA, reader_id, NULL) !=WaitSetResult_SUCCESS) {  
+        printf("error attaching reader %p\n", reader);      
         return DDS_RETCODE_OUT_OF_RESOURCES;
     }
+
+    printf("attached reader %p\n", reader);
     return DDS_RETCODE_OK;
 }
 
 dds_return_t shm_listener_detach_reader(shm_listener_t* listener, struct dds_reader* reader) {
     iox_ws_detach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA);
+    printf("detached reader %p\n", reader);
     return DDS_RETCODE_OK;
 }
 
@@ -182,6 +186,9 @@ uint32_t shm_listener_monitor_thread(void* arg) {
             iox_event_info_t event = events[i];
             if (iox_event_info_does_originate_from_user_trigger(event, listener->m_wakeup_trigger))
             {
+                //TODO: I sense a subtle race here in the waitset usage (by design)
+                //      which may cause aus to miss wake ups
+                iox_user_trigger_reset_trigger(listener->m_wakeup_trigger);
                 //do we have to do something or terminate?
                 shm_listener_perform_deferred_modifications(listener);
                 printf("shm listener woke up\n");
@@ -189,13 +196,12 @@ uint32_t shm_listener_monitor_thread(void* arg) {
                 //some reader got data, identify the reader
                 uint64_t reader_id = iox_event_info_get_event_id(event);
 
-                printf("reader %ld received data\n", reader_id);
-
                 //TODO: with deferred detach there is a potential to cause use
                 //after free errors here, the reader may not exist anymore
                 dds_reader * const reader = (dds_reader *) reader_id;
-                const void* chunk;
 
+                printf("reader %p received data\n", reader);
+                const void* chunk;
                 while(iox_sub_take_chunk(reader->m_sub, &chunk)) {
                     //handle received chunk
                     //TODO: refactor the "callback"/handler
