@@ -96,12 +96,13 @@ static dds_return_t dds_reader_delete (dds_entity *e)
     rd->sub = NULL;
   }
 #else
+  printf("****delete reader\n");
   if (e->m_domain->gv.config.enable_shm)
   {
     DDS_CLOG (DDS_LC_SHM, &e->m_domain->gv.logconfig, "Release iceoryx's subscriber\n");
     iox_sub_unsubscribe (rd->m_sub);
-    //shm_listener_deferred_detach_reader(&dds_global.m_shm_listener, rd);
-    shm_listener_detach_reader(&dds_global.m_shm_listener, rd);
+    shm_listener_deferred_detach_reader(&dds_global.m_shm_listener, rd);
+    //shm_listener_detach_reader(&dds_global.m_shm_listener, rd);
     iox_sub_deinit (rd->m_sub);
     rd->m_sub = NULL;
   }

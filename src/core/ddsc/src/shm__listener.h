@@ -36,8 +36,7 @@ struct dds_reader;
 enum shm_listener_run_states {
     SHM_LISTENER_STOP = 0,
     SHM_LISTENER_RUN = 1,
-    SHM_LISTENER_STOPPED = 2,
-    SHM_LISTENER_NOT_RUNNING = 3
+    SHM_LISTENER_NOT_RUNNING = 2
 };
 
 struct shm_listener {
@@ -49,6 +48,7 @@ struct shm_listener {
     //note: a little inefficient with arrays and brute force but it is an intermediate solution
     //      and will be replaced with a listener from iceoryx
     uint32_t m_number_of_modifications_pending;
+    uint32_t m_number_of_attached_readers;
     struct dds_reader* m_readers_to_attach[SHM_MAX_NUMBER_OF_READERS];
     struct dds_reader* m_readers_to_detach[SHM_MAX_NUMBER_OF_READERS];
  

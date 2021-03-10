@@ -13,6 +13,7 @@
 
 #include "shm__listener.h"
 #include "dds__types.h"
+#include "dds__entity.h"
 #include "dds/ddsi/q_receive.h"
 
 #if defined (__cplusplus)
@@ -28,6 +29,7 @@ void shm_listener_init(shm_listener_t* listener) {
     iox_ws_attach_user_trigger_event(listener->m_waitset, listener->m_wakeup_trigger, 0, NULL);
 
     listener->m_number_of_modifications_pending = 0;
+    listener->m_number_of_attached_readers = 0;
     for(int32_t i=0; i<SHM_MAX_NUMBER_OF_READERS; ++i) {
         listener->m_readers_to_attach[i] = NULL;
         listener->m_readers_to_detach[i] = NULL;
@@ -45,6 +47,7 @@ void shm_listener_init(shm_listener_t* listener) {
 }
 
 void shm_listener_destroy(shm_listener_t* listener) {
+    printf("***destroy\n");
     if(listener->m_run_state != SHM_LISTENER_NOT_RUNNING) {
         listener->m_run_state = SHM_LISTENER_STOP;
         shm_listener_wake(listener);
@@ -68,19 +71,22 @@ dds_return_t shm_listener_wake(shm_listener_t* listener) {
 
 dds_return_t shm_listener_attach_reader(shm_listener_t* listener, struct dds_reader* reader) {
     //using the pointer is the fastest way and should be safe without deferred attach/detach  
-    //uint64_t reader_id = reader->m_entity.m_guid.entityid.u;
-    uint64_t reader_id = (uint64_t) reader; 
+    dds_entity_t handle = reader->m_entity.m_hdllink.hdl;
+    uint64_t reader_id = (uint64_t) handle; 
     if(iox_ws_attach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA, reader_id, NULL) !=WaitSetResult_SUCCESS) {  
         printf("error attaching reader %p\n", reader);      
         return DDS_RETCODE_OUT_OF_RESOURCES;
     }
+    ++listener->m_number_of_attached_readers;
 
-    printf("attached reader %p\n", reader);
+    printf("attached reader %p with id %ld\n", reader, reader_id);
     return DDS_RETCODE_OK;
 }
 
 dds_return_t shm_listener_detach_reader(shm_listener_t* listener, struct dds_reader* reader) {
     iox_ws_detach_subscriber_event(listener->m_waitset, reader->m_sub, SubscriberEvent_HAS_DATA);
+    --listener->m_number_of_attached_readers;
+
     printf("detached reader %p\n", reader);
     return DDS_RETCODE_OK;
 }
@@ -186,6 +192,9 @@ uint32_t shm_listener_monitor_thread(void* arg) {
             iox_event_info_t event = events[i];
             if (iox_event_info_does_originate_from_user_trigger(event, listener->m_wakeup_trigger))
             {
+                // if(listener->m_run_state != SHM_LISTENER_RUN) {
+                //     break;
+                // }
                 //TODO: I sense a subtle race here in the waitset usage (by design)
                 //      which may cause aus to miss wake ups
                 iox_user_trigger_reset_trigger(listener->m_wakeup_trigger);
@@ -194,15 +203,25 @@ uint32_t shm_listener_monitor_thread(void* arg) {
                 printf("shm listener woke up\n");
             } else {
                 //some reader got data, identify the reader
-                uint64_t reader_id = iox_event_info_get_event_id(event);
+                uint64_t reader_id = iox_event_info_get_event_id(event);                             
+                dds_entity_t handle = (dds_entity_t) reader_id;
+                dds_entity* entity;             
 
-                //TODO: with deferred detach there is a potential to cause use
-                //after free errors here, the reader may not exist anymore
-                dds_reader * const reader = (dds_reader *) reader_id;
+                //TODO: this is potentially costly, we may be able to use the pointer directly
+                //      when it is used differently (listener vs. waitset, concurrent execution of
+                //      chunk receive handling)
+                dds_entity_pin(handle, &entity);
 
-                printf("reader %p received data\n", reader);
+                if(!entity) {
+                    printf("pinning reader %ld failed\n", reader_id);
+                    continue; //pinning failed (?)
+                }
+
+                dds_reader* reader = (dds_reader*) entity;
+
+                printf("reader %ld received data\n", reader_id);
                 const void* chunk;
-                while(iox_sub_take_chunk(reader->m_sub, &chunk)) {
+                while(iox_sub_take_chunk(reader->m_sub, &chunk) == ChunkReceiveResult_SUCCESS) {
                     //handle received chunk
                     //TODO: refactor the "callback"/handler
                     read_callback(chunk, reader);
@@ -214,7 +233,7 @@ uint32_t shm_listener_monitor_thread(void* arg) {
         //we will check for termination request and if there is none wait again
     }
 
-    listener->m_run_state = SHM_LISTENER_STOPPED;
+    printf("shm listener thread stopped\n");
     return 0;
 }
 
